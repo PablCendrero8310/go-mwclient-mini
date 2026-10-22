@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// A MediaWikiClient abstract the MediaWiki API
 type MediaWikiClient struct {
 	APIURL    string
 	USERAGENT string
@@ -18,14 +19,16 @@ type MediaWikiClient struct {
 	USER      *url.Userinfo
 }
 
-func NewClient(apiURL, username, password string) (*MediaWikiClient, error) {
+// NewMediaWikiClient is the constructor of MediaWikiClient
+func NewMediaWikiClient(apiURL, username, password, userAgent string) (*MediaWikiClient, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, fmt.Errorf("creando cookie jar: %w", err)
 	}
 
 	return &MediaWikiClient{
-		APIURL: apiURL,
+		APIURL:    apiURL,
+		USERAGENT: userAgent,
 		HTTP: &http.Client{
 			Timeout: 30 * time.Second,
 			Jar:     jar,
@@ -34,7 +37,9 @@ func NewClient(apiURL, username, password string) (*MediaWikiClient, error) {
 	}, nil
 }
 
+// Login allows to log in the API using a Bot Password
 func (c *MediaWikiClient) Login() error {
+	// TODO: allow login with OAuth
 	params := url.Values{
 		"action": {"query"},
 		"meta":   {"tokens"},
@@ -51,7 +56,7 @@ func (c *MediaWikiClient) Login() error {
 		return fmt.Errorf("creando petición de token: %w", err)
 	}
 
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", c.USERAGENT)
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
@@ -104,7 +109,7 @@ func (c *MediaWikiClient) Login() error {
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", c.USERAGENT)
 
 	resp, err = c.HTTP.Do(req)
 	if err != nil {
@@ -156,7 +161,7 @@ func (c *MediaWikiClient) Get(params url.Values) (*http.Response, error) {
 		return nil, fmt.Errorf("creando petición a MediaWiki: %w", err)
 	}
 
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", c.USERAGENT)
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
