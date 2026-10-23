@@ -31,7 +31,7 @@ func TestGet(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, _ := NewMediaWikiClient("https://test.wikipedia.org/w/api.php", server.URL, "test-bot", "test-password")
+	client, _ := New("https://test.wikipedia.org/w/api.php", server.URL, "test-bot", "test-password")
 
 	params := url.Values{}
 	params.Set("action", "query")

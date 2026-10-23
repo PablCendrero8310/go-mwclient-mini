@@ -1,4 +1,3 @@
-// Package mwclientmini Go mini wrapper for MediaWiki API
 package mwclientmini
 
 import (
@@ -39,8 +38,8 @@ func (c *MediaWikiClient) SetUserPassword(username, password string) {
 	c.user = url.UserPassword(username, password)
 }
 
-// NewMediaWikiClient the constructor of MediaWikiClient
-func NewMediaWikiClient(apiURL, username, password, userAgent string) (*MediaWikiClient, error) {
+// New the constructor of MediaWikiClient
+func New(apiURL, username, password, userAgent string) (*MediaWikiClient, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating cookie jar: %w", err)
