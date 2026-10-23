@@ -1,4 +1,4 @@
-package gomwclientmini
+package mwclientmini
 
 import (
 	"net/http"

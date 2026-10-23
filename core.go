@@ -1,5 +1,5 @@
-// Package gomwclientmini Go mini wrapper for MediaWiki API
-package gomwclientmini
+// Package mwclientmini Go mini wrapper for MediaWiki API
+package mwclientmini
 
 import (
 	"encoding/json"
