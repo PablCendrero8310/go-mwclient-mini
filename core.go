@@ -13,27 +13,47 @@ import (
 
 // A MediaWikiClient abstract the MediaWiki API
 type MediaWikiClient struct {
-	APIURL    string
-	USERAGENT string
-	HTTP      *http.Client
-	USER      *url.Userinfo
+	apiURL    string
+	userAgent string
+	http      *http.Client
+	user      *url.Userinfo
 }
 
-// NewMediaWikiClient is the constructor of MediaWikiClient
+// UserAgent getter for userAgent
+func (c *MediaWikiClient) UserAgent() string {
+	return c.userAgent
+}
+
+// SetUserAgent setter for userAgent
+func (c *MediaWikiClient) SetUserAgent(userAgent string) {
+	c.userAgent = userAgent
+}
+
+// User setter for user
+func (c *MediaWikiClient) User() url.Userinfo {
+	return *c.user
+}
+
+// SetUserPassword setter for user
+func (c *MediaWikiClient) SetUserPassword(username, password string) {
+	c.user = url.UserPassword(username, password)
+}
+
+// NewMediaWikiClient the constructor of MediaWikiClient
 func NewMediaWikiClient(apiURL, username, password, userAgent string) (*MediaWikiClient, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		return nil, fmt.Errorf("creando cookie jar: %w", err)
+		return nil, fmt.Errorf("creating cookie jar: %w", err)
 	}
 
 	return &MediaWikiClient{
-		APIURL:    apiURL,
-		USERAGENT: userAgent,
-		HTTP: &http.Client{
+		apiURL:    apiURL,
+		userAgent: userAgent,
+		http: &http.Client{
 			Timeout: 30 * time.Second,
 			Jar:     jar,
 		},
-		USER: url.UserPassword(username, password),
+		user: url.UserPassword(username, password),
 	}, nil
 }
 
@@ -49,24 +69,24 @@ func (c *MediaWikiClient) Login() error {
 
 	req, err := http.NewRequest(
 		http.MethodGet,
-		c.APIURL+"?"+params.Encode(),
+		c.apiURL+"?"+params.Encode(),
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("creando petición de token: %w", err)
+		return fmt.Errorf("requesting token: %w", err)
 	}
 
-	req.Header.Set("User-Agent", c.USERAGENT)
+	req.Header.Set("User-Agent", c.userAgent)
 
-	resp, err := c.HTTP.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("solicitando token de inicio de sesión: %w", err)
+		return fmt.Errorf("requesting token: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		status := resp.Status
 		resp.Body.Close()
-		return fmt.Errorf("solicitando token: HTTP %s", status)
+		return fmt.Errorf("requesting token: HTTP %s", status)
 	}
 
 	var tokenData struct {
@@ -81,19 +101,19 @@ func (c *MediaWikiClient) Login() error {
 	resp.Body.Close()
 
 	if err != nil {
-		return fmt.Errorf("decodificando token de inicio de sesión: %w", err)
+		return fmt.Errorf("decoding login token: %w", err)
 	}
 
 	token := tokenData.Query.Tokens.LoginToken
 	if token == "" {
-		return fmt.Errorf("MediaWiki no devolvió el token de inicio de sesión")
+		return fmt.Errorf("MediaWiki didn't return the login token")
 	}
 
-	password, _ := c.USER.Password()
+	password, _ := c.user.Password()
 
 	form := url.Values{
 		"action":     {"login"},
-		"lgname":     {c.USER.Username()},
+		"lgname":     {c.user.Username()},
 		"lgpassword": {password},
 		"lgtoken":    {token},
 		"format":     {"json"},
@@ -101,24 +121,24 @@ func (c *MediaWikiClient) Login() error {
 
 	req, err = http.NewRequest(
 		http.MethodPost,
-		c.APIURL,
+		c.apiURL,
 		strings.NewReader(form.Encode()),
 	)
 	if err != nil {
-		return fmt.Errorf("creando petición de inicio de sesión: %w", err)
+		return fmt.Errorf("login: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", c.USERAGENT)
+	req.Header.Set("User-Agent", c.userAgent)
 
-	resp, err = c.HTTP.Do(req)
+	resp, err = c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("enviando inicio de sesión: %w", err)
+		return fmt.Errorf("login: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("inicio de sesión: HTTP %s", resp.Status)
+		return fmt.Errorf("login: HTTP %s", resp.Status)
 	}
 
 	var loginData struct {
@@ -129,12 +149,12 @@ func (c *MediaWikiClient) Login() error {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&loginData); err != nil {
-		return fmt.Errorf("decodificando respuesta de inicio de sesión: %w", err)
+		return fmt.Errorf("decoding response: %w", err)
 	}
 
 	if loginData.Login.Result != "Success" {
 		return fmt.Errorf(
-			"inicio de sesión fallido: %s (%s)",
+			"login failed: %s (%s)",
 			loginData.Login.Result,
 			loginData.Login.Reason,
 		)
@@ -154,24 +174,24 @@ func (c *MediaWikiClient) Get(params url.Values) (*http.Response, error) {
 
 	req, err := http.NewRequest(
 		http.MethodGet,
-		c.APIURL+"?"+query.Encode(),
+		c.apiURL+"?"+query.Encode(),
 		nil,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("creando petición a MediaWiki: %w", err)
+		return nil, fmt.Errorf("requesting MediaWiki: %w", err)
 	}
 
-	req.Header.Set("User-Agent", c.USERAGENT)
+	req.Header.Set("User-Agent", c.userAgent)
 
-	resp, err := c.HTTP.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("realizando petición a MediaWiki: %w", err)
+		return nil, fmt.Errorf("requesting MediaWiki: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		status := resp.Status
 		resp.Body.Close()
-		return nil, fmt.Errorf("petición a MediaWiki: HTTP %s", status)
+		return nil, fmt.Errorf("requesting MediaWiki: HTTP %s", status)
 	}
 
 	return resp, nil
