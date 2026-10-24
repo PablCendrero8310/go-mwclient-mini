@@ -1,7 +1,6 @@
 package mwclientmini
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -198,18 +197,10 @@ func (c *MediaWikiClient) Get(params url.Values) (*http.Response, error) {
 }
 
 func (c *MediaWikiClient) Post(data url.Values) (*http.Response, error) {
-	jsonParams := make(map[string]string)
-	for key, values := range data {
-		jsonParams[key] = values[0]
-	}
-	body, err := json.Marshal(jsonParams)
-	if err != nil {
-		return nil, fmt.Errorf("values to json: %w", err)
-	}
 	req, err := http.NewRequest(
 		http.MethodPost,
 		c.apiURL,
-		bytes.NewReader(body),
+		strings.NewReader(data.Encode()),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("requesting MediaWiki: %w", err)
