@@ -1,3 +1,3 @@
-module pcendrer/pkg/go-mwclient-mini
+module pcendrer.wiki/pkg/go-mwclient-mini
 
 go 1.23
