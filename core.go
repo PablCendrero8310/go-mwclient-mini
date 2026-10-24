@@ -191,7 +191,10 @@ func (c *MediaWikiClient) Get(params url.Values) (*http.Response, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		status := resp.Status
-		resp.Body.Close()
+		err = resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("closing respose: %w", err)
+		}
 		return nil, fmt.Errorf("requesting MediaWiki: HTTP %s", status)
 	}
 
@@ -217,7 +220,10 @@ func (c *MediaWikiClient) Post(data url.Values) (*http.Response, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		status := resp.Status
-		resp.Body.Close()
+		err = resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("closing respose: %w", err)
+		}
 		return nil, fmt.Errorf("requesting MediaWiki: HTTP %s", status)
 	}
 
