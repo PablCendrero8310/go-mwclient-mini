@@ -1,6 +1,7 @@
 package mwclientmini
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -175,6 +176,40 @@ func (c *MediaWikiClient) Get(params url.Values) (*http.Response, error) {
 		http.MethodGet,
 		c.apiURL+"?"+query.Encode(),
 		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("requesting MediaWiki: %w", err)
+	}
+
+	req.Header.Set("User-Agent", c.userAgent)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("requesting MediaWiki: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		status := resp.Status
+		resp.Body.Close()
+		return nil, fmt.Errorf("requesting MediaWiki: HTTP %s", status)
+	}
+
+	return resp, nil
+}
+
+func (c *MediaWikiClient) Post(data url.Values) (*http.Response, error) {
+	jsonParams := make(map[string]string)
+	for key, values := range data {
+		jsonParams[key] = values[0]
+	}
+	body, err := json.Marshal(jsonParams)
+	if err != nil {
+		return nil, fmt.Errorf("values to json: %w", err)
+	}
+	req, err := http.NewRequest(
+		http.MethodPost,
+		c.apiURL,
+		bytes.NewReader(body),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("requesting MediaWiki: %w", err)
