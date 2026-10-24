@@ -97,12 +97,14 @@ func (c *MediaWikiClient) Login() error {
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&tokenData)
-	resp.Body.Close()
-
 	if err != nil {
 		return fmt.Errorf("decoding login token: %w", err)
 	}
 
+	err = resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("closing respose: %w", err)
+	}
 	token := tokenData.Query.Tokens.LoginToken
 	if token == "" {
 		return fmt.Errorf("MediaWiki didn't return the login token")
