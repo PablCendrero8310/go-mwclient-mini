@@ -195,3 +195,29 @@ func (c *MediaWikiClient) Get(params url.Values) (*http.Response, error) {
 
 	return resp, nil
 }
+
+func (c *MediaWikiClient) Post(data url.Values) (*http.Response, error) {
+	req, err := http.NewRequest(
+		http.MethodPost,
+		c.apiURL,
+		strings.NewReader(data.Encode()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("requesting MediaWiki: %w", err)
+	}
+
+	req.Header.Set("User-Agent", c.userAgent)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("requesting MediaWiki: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		status := resp.Status
+		resp.Body.Close()
+		return nil, fmt.Errorf("requesting MediaWiki: HTTP %s", status)
+	}
+
+	return resp, nil
+}
