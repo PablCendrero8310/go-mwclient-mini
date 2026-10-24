@@ -1,0 +1,24 @@
+name: Redirect PRs to dev
+
+on:
+  pull_request_target:
+    types: [opened, edited]
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      # ⚠️ NO hacer checkout del código del PR (seguridad)
+      - uses: Vankka/pr-target-branch-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          target: main
+          exclude: dev
+          change-to: dev
+          comment: "The PR has been redirected to `dev`."   
+          already-exists-action: close_other_continue
+          already-exists-comment: "There is already another PR open: {url}"
+          already-exists-other-comment: "Closed for {url}"   
