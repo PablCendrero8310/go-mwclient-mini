@@ -242,7 +242,7 @@ func (c *MediaWikiClient) Post(data url.Values) (*http.Response, error) {
 	return resp, nil
 }
 
-func (c *MediaWikiClient) GetCSRF() (string, error) {
+func (c *MediaWikiClient) GetCSRF() (_ string, retErr error) {
 	var decoded struct {
 		Query struct {
 			Tokens struct {
@@ -264,6 +264,11 @@ func (c *MediaWikiClient) GetCSRF() (string, error) {
 		return "", fmt.Errorf("decoding response: %w", err)
 	}
 
+	defer func() {
+		if err := closeBody(res); err != nil {
+			retErr = errors.Join(retErr, err)
+		}
+	}()
 	return decoded.Query.Tokens.CSRFToken, nil
 }
 
