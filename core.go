@@ -2,6 +2,7 @@ package mwclientmini
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/cookiejar"
@@ -10,7 +11,7 @@ import (
 	"time"
 )
 
-// A MediaWikiClient abstract the MediaWiki API
+// MediaWikiClient abstracts the MediaWiki API.
 type MediaWikiClient struct {
 	apiURL    string
 	userAgent string
@@ -18,27 +19,27 @@ type MediaWikiClient struct {
 	user      *url.Userinfo
 }
 
-// UserAgent getter for userAgent
+// UserAgent returns the configured user agent.
 func (c *MediaWikiClient) UserAgent() string {
 	return c.userAgent
 }
 
-// SetUserAgent setter for userAgent
+// SetUserAgent sets the user agent.
 func (c *MediaWikiClient) SetUserAgent(userAgent string) {
 	c.userAgent = userAgent
 }
 
-// User setter for user
+// User returns the configured user information.
 func (c *MediaWikiClient) User() url.Userinfo {
 	return *c.user
 }
 
-// SetUserPassword setter for user
+// SetUserPassword sets the username and password.
 func (c *MediaWikiClient) SetUserPassword(username, password string) {
 	c.user = url.UserPassword(username, password)
 }
 
-// New the constructor of MediaWikiClient
+// New constructs a MediaWikiClient.
 func New(apiURL, username, password, userAgent string) (*MediaWikiClient, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
@@ -56,9 +57,17 @@ func New(apiURL, username, password, userAgent string) (*MediaWikiClient, error)
 	}, nil
 }
 
-// Login allows to log in the API using a Bot Password
-func (c *MediaWikiClient) Login() error {
-	// TODO: allow login with OAuth
+// closeBody closes the response body and wraps any error.
+func closeBody(resp *http.Response) error {
+	if err := resp.Body.Close(); err != nil {
+		return fmt.Errorf("closing response body: %w", err)
+	}
+	return nil
+}
+
+// Login logs in to the MediaWiki API using a Bot Password.
+func (c *MediaWikiClient) Login() (retErr error) {
+	// TODO: Allow login with OAuth.
 	params := url.Values{
 		"action": {"query"},
 		"meta":   {"tokens"},
@@ -83,9 +92,8 @@ func (c *MediaWikiClient) Login() error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		status := resp.Status
-		resp.Body.Close()
-		return fmt.Errorf("requesting token: HTTP %s", status)
+		statusErr := fmt.Errorf("requesting token: HTTP %s", resp.Status)
+		return errors.Join(statusErr, closeBody(resp))
 	}
 
 	var tokenData struct {
@@ -96,11 +104,14 @@ func (c *MediaWikiClient) Login() error {
 		} `json:"query"`
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&tokenData)
-	resp.Body.Close()
+	decodeErr := json.NewDecoder(resp.Body).Decode(&tokenData)
+	closeErr := closeBody(resp)
 
-	if err != nil {
-		return fmt.Errorf("decoding login token: %w", err)
+	if decodeErr != nil || closeErr != nil {
+		return errors.Join(
+			wrapError("decoding login token", decodeErr),
+			closeErr,
+		)
 	}
 
 	token := tokenData.Query.Tokens.LoginToken
@@ -134,7 +145,13 @@ func (c *MediaWikiClient) Login() error {
 	if err != nil {
 		return fmt.Errorf("login: %w", err)
 	}
-	defer resp.Body.Close()
+
+	// Propagate a close error even if Login returns another error.
+	defer func() {
+		if err := closeBody(resp); err != nil {
+			retErr = errors.Join(retErr, err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("login: HTTP %s", resp.Status)
@@ -162,12 +179,15 @@ func (c *MediaWikiClient) Login() error {
 	return nil
 }
 
+// Get sends a GET request to the MediaWiki API.
+// The caller is responsible for closing the returned response body.
 func (c *MediaWikiClient) Get(params url.Values) (*http.Response, error) {
-	// No modificar los parámetros del llamador.
+	// Do not modify the caller's parameters.
 	query := make(url.Values, len(params))
 	for key, values := range params {
 		query[key] = append([]string(nil), values...)
 	}
+
 	query.Set("format", "json")
 	query.Set("formatversion", "2")
 
@@ -188,14 +208,15 @@ func (c *MediaWikiClient) Get(params url.Values) (*http.Response, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		status := resp.Status
-		resp.Body.Close()
-		return nil, fmt.Errorf("requesting MediaWiki: HTTP %s", status)
+		statusErr := fmt.Errorf("requesting MediaWiki: HTTP %s", resp.Status)
+		return nil, errors.Join(statusErr, closeBody(resp))
 	}
 
 	return resp, nil
 }
 
+// Post sends a POST request to the MediaWiki API.
+// The caller is responsible for closing the returned response body.
 func (c *MediaWikiClient) Post(data url.Values) (*http.Response, error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
@@ -214,10 +235,17 @@ func (c *MediaWikiClient) Post(data url.Values) (*http.Response, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		status := resp.Status
-		resp.Body.Close()
-		return nil, fmt.Errorf("requesting MediaWiki: HTTP %s", status)
+		statusErr := fmt.Errorf("requesting MediaWiki: HTTP %s", resp.Status)
+		return nil, errors.Join(statusErr, closeBody(resp))
 	}
 
 	return resp, nil
+}
+
+// wrapError wraps err with a message, returning nil when err is nil.
+func wrapError(message string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("%s: %w", message, err)
 }
