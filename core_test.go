@@ -40,7 +40,11 @@ func TestGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get() returned an error: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := closeBody(resp); err != nil {
+			t.Fatalf("Body.Close() returned an error: %v", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status = %d; expected 200", resp.StatusCode)
