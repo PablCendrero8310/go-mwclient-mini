@@ -242,6 +242,31 @@ func (c *MediaWikiClient) Post(data url.Values) (*http.Response, error) {
 	return resp, nil
 }
 
+func (c *MediaWikiClient) GetCSRF() (string, error) {
+	var decoded struct {
+		Query struct {
+			Tokens struct {
+				CSRFToken string `json:"csrftoken"`
+			} `json:"tokens"`
+		} `json:"query"`
+	}
+	params := url.Values{
+		"action": []string{"query"},
+		"meta":   []string{"tokens"},
+		"format": []string{"json"},
+	}
+	res, err := c.Get(params)
+	if err != nil {
+		return "", fmt.Errorf("requesting CSRF token: %w", err)
+	}
+
+	if err := json.NewDecoder(res.Body).Decode(&decoded); err != nil {
+		return "", fmt.Errorf("decoding response: %w", err)
+	}
+
+	return decoded.Query.Tokens.CSRFToken, nil
+}
+
 // wrapError wraps err with a message, returning nil when err is nil.
 func wrapError(message string, err error) error {
 	if err == nil {
