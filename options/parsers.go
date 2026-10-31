@@ -68,3 +68,7 @@ func toParams(opts any) url.Values {
 
 	return params
 }
+
+func (o EditOptions) ToParams() url.Values {
+	return toParams(o)
+}
