@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+
+	"pcendrer/pkg/go-mwclient-mini/options"
 )
 
 func (c *MediaWikiClient) GetCSRF() (_ string, retErr error) {
@@ -35,4 +37,33 @@ func (c *MediaWikiClient) GetCSRF() (_ string, retErr error) {
 		}
 	}()
 	return decoded.Query.Tokens.CSRFToken, nil
+}
+
+func (c *MediaWikiClient) EditByName(text string, options options.EditOptions) error {
+	var mwErr struct {
+		Error *struct {
+			Code string `json:"code"`
+			Info string `json:"info"`
+		} `json:"error"`
+	}
+	token, err := c.GetCSRF()
+	if err != nil {
+		return err
+	}
+	params := options.ToParams()
+	params.Set("action", "edit")
+	params.Set("text", text)
+	params.Set("token", token)
+	res, err := c.Post(params)
+	if err != nil {
+		return err
+	}
+	if err := json.NewDecoder(res.Body).Decode(&mwErr); err != nil {
+		return err
+	}
+
+	if mwErr.Error != nil {
+		return fmt.Errorf("%s: %s", mwErr.Error.Code, mwErr.Error.Info)
+	}
+	return nil
 }
