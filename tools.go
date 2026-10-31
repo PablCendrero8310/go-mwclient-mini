@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"pcendrer/pkg/go-mwclient-mini/options"
+	"github.com/PablCendrero8310/go-mwclient-mini/options"
 )
 
 func (c *MediaWikiClient) GetCSRF() (_ string, retErr error) {
