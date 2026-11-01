@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/PablCendrero8310/go-mwclient-mini/options"
 )
@@ -52,6 +53,36 @@ func (c *MediaWikiClient) EditByTitle(title, text string, options options.EditOp
 	}
 	params := options.ToParams()
 	params.Set("title", title)
+	params.Set("action", "edit")
+	params.Set("text", text)
+	params.Set("token", token)
+	res, err := c.Post(params)
+	if err != nil {
+		return err
+	}
+	if err := json.NewDecoder(res.Body).Decode(&mwErr); err != nil {
+		return err
+	}
+
+	if mwErr.Error != nil {
+		return fmt.Errorf("%s: %s", mwErr.Error.Code, mwErr.Error.Info)
+	}
+	return nil
+}
+
+func (c *MediaWikiClient) EditByID(pageid int, text string, options options.EditOptions) error {
+	var mwErr struct {
+		Error *struct {
+			Code string `json:"code"`
+			Info string `json:"info"`
+		} `json:"error"`
+	}
+	token, err := c.GetCSRF()
+	if err != nil {
+		return err
+	}
+	params := options.ToParams()
+	params.Set("pageid", strconv.Itoa(pageid))
 	params.Set("action", "edit")
 	params.Set("text", text)
 	params.Set("token", token)
