@@ -39,7 +39,7 @@ func (c *MediaWikiClient) GetCSRF() (_ string, retErr error) {
 	return decoded.Query.Tokens.CSRFToken, nil
 }
 
-func (c *MediaWikiClient) EditByName(text string, options options.EditOptions) error {
+func (c *MediaWikiClient) EditByTitle(title, text string, options options.EditOptions) error {
 	var mwErr struct {
 		Error *struct {
 			Code string `json:"code"`
@@ -51,6 +51,7 @@ func (c *MediaWikiClient) EditByName(text string, options options.EditOptions) e
 		return err
 	}
 	params := options.ToParams()
+	params.Set("title", title)
 	params.Set("action", "edit")
 	params.Set("text", text)
 	params.Set("token", token)
