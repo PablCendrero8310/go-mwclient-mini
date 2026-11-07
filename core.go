@@ -1,6 +1,7 @@
 package mwclientmini
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,10 @@ type MediaWikiClient struct {
 	userAgent string
 	http      *http.Client
 	user      *url.Userinfo
+	stream    struct {
+		Listen func(ctx context.Context, lastID *string, handler func(RecentChange)) error
+		Run    func(ctx context.Context, handler func(RecentChange)) error
+	}
 }
 
 // UserAgent returns the configured user agent.
@@ -39,6 +44,13 @@ func (c *MediaWikiClient) SetUserPassword(username, password string) {
 	c.user = url.UserPassword(username, password)
 }
 
+func (c *MediaWikiClient) Stream() struct {
+	Listen func(ctx context.Context, lastID *string, handler func(RecentChange)) error
+	Run    func(ctx context.Context, handler func(RecentChange)) error
+} {
+	return c.stream
+}
+
 func (c *MediaWikiClient) Hostname() string {
 	u, err := url.Parse(c.apiURL)
 	if err != nil {
@@ -54,7 +66,7 @@ func New(apiURL, username, password, userAgent string) (*MediaWikiClient, error)
 		return nil, fmt.Errorf("creating cookie jar: %w", err)
 	}
 
-	return &MediaWikiClient{
+	client := &MediaWikiClient{
 		apiURL:    apiURL,
 		userAgent: userAgent,
 		http: &http.Client{
@@ -62,7 +74,14 @@ func New(apiURL, username, password, userAgent string) (*MediaWikiClient, error)
 			Jar:     jar,
 		},
 		user: url.UserPassword(username, password),
-	}, nil
+		stream: struct {
+			Listen func(ctx context.Context, lastID *string, handler func(RecentChange)) error
+			Run    func(ctx context.Context, handler func(RecentChange)) error
+		}{},
+	}
+	client.stream.Listen = client.listen
+	client.stream.Run = client.run
+	return client, nil
 }
 
 // closeBody closes the response body and wraps any error.
