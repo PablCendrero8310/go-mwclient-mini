@@ -1,4 +1,4 @@
-package mediawiki
+package stream
 
 import (
 	"bufio"
