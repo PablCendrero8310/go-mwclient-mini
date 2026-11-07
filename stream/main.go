@@ -3,10 +3,13 @@ package stream
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 )
 
 const streamURL = "https://stream.wikimedia.org/v2/stream/recentchange"
@@ -87,4 +90,69 @@ func consume(ctx context.Context, client *http.Client, lastID *string, handler f
 	}
 
 	return io.EOF
+}
+
+func Listen(ctx context.Context, client *http.Client, lastID *string, handler func([]byte), userAgent string) error {
+	return consume(ctx, client, lastID, handler, userAgent)
+}
+
+func Run(
+	ctx context.Context,
+	client *http.Client,
+	handler func([]byte),
+	userAgent string,
+) error {
+	var lastID string
+	delay := time.Second
+
+	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		err := Listen(ctx, client, &lastID, handler, userAgent)
+
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		switch {
+		case err == nil:
+			continue
+
+		case errors.Is(err, io.EOF):
+			// Conexión cerrada: reconectar.
+
+		case errors.Is(err, context.Canceled):
+			return err
+
+		case errors.Is(err, context.DeadlineExceeded):
+			return err
+
+		default:
+			var urlErr *url.Error
+
+			if errors.As(err, &urlErr) {
+				// Error de conexión HTTP: reconectar.
+				break
+			}
+
+			// Error desconocido o no recuperable.
+			return err
+		}
+
+		timer := time.NewTimer(delay)
+
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+
+		delay *= 2
+		if delay > 30*time.Second {
+			delay = 30 * time.Second
+		}
+	}
 }
