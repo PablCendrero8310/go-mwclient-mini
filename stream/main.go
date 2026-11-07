@@ -11,14 +11,14 @@ import (
 
 const streamURL = "https://stream.wikimedia.org/v2/stream/recentchange"
 
-func consume(ctx context.Context, client *http.Client, lastID *string, handler func([]byte)) error {
+func consume(ctx context.Context, client *http.Client, lastID *string, handler func([]byte), userAgent string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, streamURL, nil)
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("User-Agent", "PCendrerBOT/1.0 (contact: pcendrdev@proton.me)")
+	req.Header.Set("User-Agent", userAgent)
 
 	if *lastID != "" {
 		req.Header.Set("Last-Event-ID", *lastID)
