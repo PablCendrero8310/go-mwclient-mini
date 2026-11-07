@@ -35,7 +35,7 @@ func (c *MediaWikiClient) run(ctx context.Context, handler func(RecentChange)) e
 		if event.Meta.Domain == "canary" {
 			return
 		}
-		if event.ServerName == c.Hostname() {
+		if event.ServerName != c.Hostname() {
 			return
 		}
 		handler(event)
