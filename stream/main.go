@@ -14,7 +14,14 @@ import (
 
 const streamURL = "https://stream.wikimedia.org/v2/stream/recentchange"
 
-func consume(ctx context.Context, client *http.Client, lastID *string, handler func([]byte), userAgent string) error {
+func closeBody(resp *http.Response) error {
+	if err := resp.Body.Close(); err != nil {
+		return fmt.Errorf("closing response body: %w", err)
+	}
+	return nil
+}
+
+func consume(ctx context.Context, client *http.Client, lastID *string, handler func([]byte), userAgent string) (retErr error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, streamURL, nil)
 	if err != nil {
 		return err
@@ -31,7 +38,11 @@ func consume(ctx context.Context, client *http.Client, lastID *string, handler f
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := closeBody(resp); err != nil {
+			retErr = errors.Join(retErr, err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP status: %s", resp.Status)
