@@ -39,6 +39,14 @@ func (c *MediaWikiClient) SetUserPassword(username, password string) {
 	c.user = url.UserPassword(username, password)
 }
 
+func (c *MediaWikiClient) Hostname() string {
+	u, err := url.Parse(c.apiURL)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
+}
+
 // New constructs a MediaWikiClient.
 func New(apiURL, username, password, userAgent string) (*MediaWikiClient, error) {
 	jar, err := cookiejar.New(nil)
