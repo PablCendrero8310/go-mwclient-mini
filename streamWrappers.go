@@ -10,18 +10,19 @@ import (
 func (c *MediaWikiClient) listen(ctx context.Context, lastID *string, handler func(RecentChange)) error {
 	streamClient := *c.http
 	streamClient.Timeout = 0
-	if err := stream.Listen(ctx, &streamClient, lastID, func(b []byte) {
+	if err := stream.Listen(ctx, &streamClient, lastID, func(b []byte) error {
 		var event RecentChange
 		if err := json.Unmarshal(b, &event); err != nil {
-			return
+			return err
 		}
 		if event.Meta.Domain == "canary" {
-			return
+			return nil
 		}
 		if event.ServerName != c.Hostname() {
-			return
+			return nil
 		}
 		handler(event)
+		return nil
 	}, c.userAgent); err != nil {
 		return err
 	}
@@ -31,18 +32,19 @@ func (c *MediaWikiClient) listen(ctx context.Context, lastID *string, handler fu
 func (c *MediaWikiClient) run(ctx context.Context, handler func(RecentChange)) error {
 	streamClient := *c.http
 	streamClient.Timeout = 0
-	if err := stream.Run(ctx, &streamClient, func(b []byte) {
+	if err := stream.Run(ctx, &streamClient, func(b []byte) error {
 		var event RecentChange
 		if err := json.Unmarshal(b, &event); err != nil {
-			return
+			return err
 		}
 		if event.Meta.Domain == "canary" {
-			return
+			return nil
 		}
 		if event.ServerName != c.Hostname() {
-			return
+			return nil
 		}
 		handler(event)
+		return nil
 	}, c.userAgent); err != nil {
 		return err
 	}
