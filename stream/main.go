@@ -21,7 +21,7 @@ func closeBody(resp *http.Response) error {
 	return nil
 }
 
-func consume(ctx context.Context, client *http.Client, lastID *string, handler func([]byte), userAgent string) (retErr error) {
+func consume(ctx context.Context, client *http.Client, lastID *string, handler func([]byte) error, userAgent string) (retErr error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, streamURL, nil)
 	if err != nil {
 		return err
@@ -54,25 +54,30 @@ func consume(ctx context.Context, client *http.Client, lastID *string, handler f
 	var data []string
 	var eventID string
 
-	dispatch := func() {
+	dispatch := func() error {
 		if len(data) == 0 {
-			return
+			return nil
 		}
 
-		handler([]byte(strings.Join(data, "\n")))
+		if err := handler([]byte(strings.Join(data, "\n"))); err != nil {
+			return err
+		}
 
 		if eventID != "" {
 			*lastID = eventID
 		}
 
 		data = nil
+		return nil
 	}
 
 	for reader.Scan() {
 		line := reader.Text()
 
 		if line == "" {
-			dispatch()
+			if err := dispatch(); err != nil {
+				return err
+			}
 			eventID = ""
 			continue
 		}
@@ -103,14 +108,14 @@ func consume(ctx context.Context, client *http.Client, lastID *string, handler f
 	return io.EOF
 }
 
-func Listen(ctx context.Context, client *http.Client, lastID *string, handler func([]byte), userAgent string) error {
+func Listen(ctx context.Context, client *http.Client, lastID *string, handler func([]byte) error, userAgent string) error {
 	return consume(ctx, client, lastID, handler, userAgent)
 }
 
 func Run(
 	ctx context.Context,
 	client *http.Client,
-	handler func([]byte),
+	handler func([]byte) error,
 	userAgent string,
 ) error {
 	var lastID string
