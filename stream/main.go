@@ -133,7 +133,7 @@ func Run(
 		}
 
 		switch {
-		case err == nil, errors.Is(err, io.EOF): // Reconectar.
+		case err == nil:
 			continue
 
 		case errors.Is(err, io.EOF):
