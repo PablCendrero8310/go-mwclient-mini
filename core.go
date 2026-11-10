@@ -19,8 +19,8 @@ type MediaWikiClient struct {
 	http      *http.Client
 	user      *url.Userinfo
 	stream    struct {
-		Listen func(ctx context.Context, lastID *string, handler func(RecentChange)) error
-		Run    func(ctx context.Context, handler func(RecentChange)) error
+		Listen func(ctx context.Context, lastID *string, handler func(RecentChange) error) error
+		Run    func(ctx context.Context, handler func(RecentChange) error) error
 	}
 }
 
@@ -45,8 +45,8 @@ func (c *MediaWikiClient) SetUserPassword(username, password string) {
 }
 
 func (c *MediaWikiClient) Stream() struct {
-	Listen func(ctx context.Context, lastID *string, handler func(RecentChange)) error
-	Run    func(ctx context.Context, handler func(RecentChange)) error
+	Listen func(ctx context.Context, lastID *string, handler func(RecentChange) error) error
+	Run    func(ctx context.Context, handler func(RecentChange) error) error
 } {
 	return c.stream
 }
@@ -75,8 +75,8 @@ func New(apiURL, username, password, userAgent string) (*MediaWikiClient, error)
 		},
 		user: url.UserPassword(username, password),
 		stream: struct {
-			Listen func(ctx context.Context, lastID *string, handler func(RecentChange)) error
-			Run    func(ctx context.Context, handler func(RecentChange)) error
+			Listen func(ctx context.Context, lastID *string, handler func(RecentChange) error) error
+			Run    func(ctx context.Context, handler func(RecentChange) error) error
 		}{},
 	}
 	client.stream.Listen = client.listen
