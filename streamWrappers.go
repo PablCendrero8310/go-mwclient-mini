@@ -21,7 +21,9 @@ func (c *MediaWikiClient) listen(ctx context.Context, lastID *string, handler fu
 		if event.ServerName != c.Hostname() {
 			return nil
 		}
-		handler(event)
+		if err := handler(event); err != nil {
+			return err
+		}
 		return nil
 	}, c.userAgent); err != nil {
 		return err
@@ -43,7 +45,9 @@ func (c *MediaWikiClient) run(ctx context.Context, handler func(RecentChange) er
 		if event.ServerName != c.Hostname() {
 			return nil
 		}
-		handler(event)
+		if err := handler(event); err != nil {
+			return err
+		}
 		return nil
 	}, c.userAgent); err != nil {
 		return err
